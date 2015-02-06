@@ -1,0 +1,111 @@
+package general;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import scraperThread.ScraperThreadSku;
+
+// This is the main thread that launches the subthreads to download the skus for a specific category 
+
+public class DownloadSkusThread extends Thread {
+
+	long sleepTime = 0;
+	
+	public DownloadSkusThread(long sleepTime) {
+		
+		this.sleepTime = sleepTime;
+		
+	}
+	
+	
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+		
+		boolean forever = true;
+		
+		try {
+			
+			while(forever) {
+				downloadSku();
+				this.sleep(sleepTime);
+				if(sleepTime == 0) forever = false;
+			}
+			
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	// gets all the categories URLs from the database, and for each one launches a dedicated thread to download their skus
+	
+	public void downloadSku() {
+		
+		Connection input = null;
+		Statement statement_in = null;
+		ResultSet rs = null;
+		
+		try {
+			
+		//	Connection conn=DriverManager.getConnection("jdbc:mysql://localhost/cloth","root","j4v4d00d");
+		//	Statement s = conn.createStatement();
+		//	ResultSet rs = s.executeQuery("SELECT [LastName] FROM [Clients]");
+		//	while (rs.next()) {
+		//	    System.out.println(rs.getString(1));
+		//	}
+			
+			
+			
+			
+			//Class.forName("sun.jdbc.odbc.JdbcOdbcDriver");
+			//input = DriverManager.getConnection("jdbc:mysql://localhost/cloth","root","j4v4d00d");
+			
+			
+			Connection conn=DriverManager.getConnection("jdbc:mysql://localhost/cloth","root","ILCAVI87");
+			statement_in = conn.createStatement();
+			
+			String sql = "SELECT * FROM categories";
+			
+			rs = statement_in.executeQuery(sql);
+			
+			while(rs.next()) {
+				
+				String threadClassName = rs.getString("threadname");
+				String threadUrl = rs.getString("url");
+				int idCategory = rs.getInt("idCategeory");
+				
+				Class threadClass = Class.forName("scraperThread.Sku."+threadClassName);
+				
+				ScraperThreadSku newThread = (ScraperThreadSku)threadClass.newInstance();
+				
+				System.out.println(threadUrl);
+				
+				newThread.setUrl(threadUrl);
+				newThread.setIdCategory(idCategory);
+				
+				//System.out.println(newThread.url);
+				newThread.run();
+				
+			}
+			
+		} catch(Exception e) {
+			
+			e.printStackTrace();
+			
+		} finally {
+			
+			try {
+				
+				if(rs != null) rs.close();
+				if(statement_in != null) statement_in.close();
+				if(input != null) input.close();
+				
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+			
+		}
+	}
+}
